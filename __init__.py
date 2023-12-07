@@ -58,6 +58,14 @@ def gatherImages():
 def buildIndex(imageList) -> None:
 
     html = "<!DOCTYPE html><html><title>AP Session Images</title>"
+
+    # disable caching since this file will be recreated frequently
+    html += "<head>"
+    html += "<meta http-equiv=\"Cache-Control\" content=\"no-cache, no-store, must-revalidate\" />"
+    html += "\<meta http-equiv=\"Pragma\" content=\"no-cache\" />"
+    html += "<meta http-equiv=\"Expires\" content=\"0\" />"
+    html += "</head>"
+
     html += "<meta name='viewport' content='width=device-width, initial-scale=1'>"
     html += "<link rel='stylesheet' href='https://www.w3schools.com/w3css/4/w3.css'>"
     html += "<link rel='stylesheet' href='css/mycss.css'>"
