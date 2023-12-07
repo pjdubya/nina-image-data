@@ -32,6 +32,8 @@ apps:
       source_folder: /config/pyscript/apps/nina-image-data/source
 ```
 
+NOTE: In this version, the image_folder location will be deleted and recreated each time this script is executed to ensure a clean data set. Be sure not to point at a folder you have any other data in!
+
 ### NINA
 - Install Web Session History Viewer in your NINA instance. After restarting NINA, update the plug-in's "web plugin state" to ON and set the port to an available port on the machine running NINA.
 
