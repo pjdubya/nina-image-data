@@ -4,7 +4,7 @@
 
 Astrophotography images captured with NINA generally remain locally captured on the device where NINA is running, e.g. a mini PC at the capture site. For users who wish to monitor the progress of their imaging session remotely, they may use RDC to view the progress of NINA throughout the night. This project helps users who are running Home Assistant to retrieve thumbnail versions of their stretched images and display them in a HA card. 
 
-For those who also want to retrieve other data throughout their session such as current RA/DEC position, meridian flip time, and other useful metrics, please also follow the instructions @diabetic_debate 's provided for setting up MQTT in Home Assistant and Ground Station in NINA:
+For those who also want to retrieve other data throughout their session such as current RA/DEC position, meridian flip time, and other useful metrics, please also follow the instructions @chvvkumar 's provided for setting up MQTT in Home Assistant and Ground Station in NINA:
 
 https://www.cloudynights.com/topic/902171-nina-status-dashboard-in-home-assistant-via-mqtt/
 
@@ -35,7 +35,7 @@ apps:
 NOTE: In this version, the image_folder location will be deleted and recreated each time this script is executed to ensure a clean data set. Be sure not to point at a folder you have any other data in!
 
 ### NINA
-- Install Web Session History Viewer in your NINA instance. After restarting NINA, update the plug-in's "web plugin state" to ON and set the port to an available port on the machine running NINA.
+- Install Web Session History Viewer in your NINA instance. After restarting NINA, update the plug-in's "web plugin state" to ON and set the port to an available port on the machine running NINA. Set "keep history days" to 1 unless you are using this plug-in for other purposes.
 
 ## Installation
 
@@ -50,12 +50,34 @@ url: /local/ApImages/index.html
 aspect_ratio: '1'
 ```
 
+- Set up a new Home Assitant automation to trigger the service to execute periodically while the sequencing session is active. Note that this depends on using the MQTT data publish solution @chvvkumar described at the link above, as well as an MQTT publish to topic astro/nina/sequencestatus that includes "Sequence started" at the start and "Sequence ended" at the end.
+
+```
+alias: Execute nina-image-data while session in progress
+description: ""
+trigger:
+  - platform: state
+    entity_id:
+      - sensor.nina_sequence_status
+condition:
+  - condition: template
+    value_template: "{{ 'Sequence started' in trigger.to_state.state }}"
+action:
+  - repeat:
+      sequence:
+        - service: pyscript.ninaimagedata
+          data: {}
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 30
+            milliseconds: 0
+      until:
+        - condition: template
+          value_template: "{{ 'Sequence ended' in trigger.to_state.state }}"
+mode: single
+```
+
 ## Testing
 
 In Home Assistant, select Developer Tools, then Services. In the Service dropdown, type "ninaimagedata", then select "Call Service". If successful, there will be a <config>/www/ApImages/ directory with your NINA images and a lightweight set of HTML files to display them.
-
-## Notes and Caveats
-
-At this point it should be possible to link the service to an automation to trigger when there's a signal such as new MQTT inputs indicating a NINA session in progress and repeat until another MQTT event indicates the session has completed. (I don't yet see an option in the HA automations for this kind of while loop so will need some further exploration.)
-
-
