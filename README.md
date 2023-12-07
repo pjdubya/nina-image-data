@@ -11,11 +11,11 @@ https://www.cloudynights.com/topic/902171-nina-status-dashboard-in-home-assistan
 ## Pre-Requisites
 
 ### Home Assistant
-1. Home Assistant running. These instructions were written for Home Assitant running in container mode, and haven't yet been validated for other modes, although it should be similar.
-1. python3 installed
+- Home Assistant running. These instructions were written for Home Assitant running in container mode, and haven't yet been validated for other modes, although it should be similar.
+- python3 installed
 
 ### NINA
-1. Install Web Session History Viewer in your NINA instance. After restarting NINA, update the plug-in's "web plugin state" to ON and set the port to an available port on the machine running NINA.
+- Install Web Session History Viewer in your NINA instance. After restarting NINA, update the plug-in's "web plugin state" to ON and set the port to an available port on the machine running NINA.
 
 ## Installation
 
@@ -23,19 +23,25 @@ https://www.cloudynights.com/topic/902171-nina-status-dashboard-in-home-assistan
 1. Copy the nina.image-data.py and 'source' directory into python_scripts
 1. ssh into the server running Home Assitant and navigate to the python_scripts directory
 1. Execute the following to create the python env with the necessary libraries:
+```
 		python -m venv env
 		. env/bin/activate
 		pip install --upgrade pip
 		pip install Pillow
 		pip install requests
+```
 1. Edit nina.image-data.py line 10 to set the baseApiUrl to the URL of your Web Session History Viewer, e.g. https://my_nina_machine.example.com:8888
 1. For now, execute the script once to build your initial image capture (mext release will add steps soon regarding how to enable this script to be executed from an HA automation). Exeucte from ssh while in same directory as the python script.
+```
 		python ./nina.image-data.py
+```
  
 1. In Home Assitant, edit a dashboard and add a new Webpage Card
 1. Edit the code for the new Webpage Card and set to:
+```
 		type: iframe
 		url: /local/ApImages/index.html
 		aspect_ratio: '1'
+```
 
 
