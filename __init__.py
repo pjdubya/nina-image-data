@@ -6,32 +6,35 @@ import requests
 from io import BytesIO
 import datetime
 
-# NOTES:
-## Next version will move this to an environment variable:
-baseApiUrl = 'https://my_nina_machine.example.com:8888'
-
+# when running this script from HA's pyscript with pyscript/config.yaml set with configuration for this application, these variables will be set
+if 'pyscript.app_config' in globals():
+    log.info('pyscript detected: using values provided in <config>/pyscript/config.yaml')
+    baseApiUrl = pyscript.app_config[0]['nina_web_viewer_base_url']
+    targetDir = pyscript.app_config[0]['image_folder']
+    sourceDir = pyscript.app_config[0]['source_folder']
+else:
+    log.info('pyscript not detected: using values provided in main app file')
+    baseApiUrl = 'https://my_nina_machine.example.com:8888'
+    targetDir = '../www/ApImages'
+    sourceDir = './source'
 
 sessionsUrl = baseApiUrl + '/sessions/sessions.json'
-targetDirWeb = 'ApImages'
-targetDirBase = '../www/'
-targetDir = targetDirBase + targetDirWeb
 
 imgListWeb = []
 
 def gatherImages():
-
-    if not os.path.exists(targetDirBase):
-        os.mkdir(targetDirBase)
+    
+    # TODO: may still need to add check and create www directory 
     
     if not os.path.exists(targetDir):
         os.mkdir(targetDir)
 
-    responseSessions = requests.get(sessionsUrl)
+    responseSessions = task.executor(requests.get, sessionsUrl)
     jsonResponseSessions = json.loads(responseSessions.text)
     for session in jsonResponseSessions['sessions']:
         sessionKey = jsonResponseSessions['sessions'][0]['key']
         sessionDataUrl = baseApiUrl + '/sessions/{}/sessionHistory.json'.format(sessionKey)
-        responseImages = requests.get(sessionDataUrl)
+        responseImages = task.executor(requests.get, sessionDataUrl)
         jsonResponseImages = json.loads(responseImages.text)
 
         for target in jsonResponseImages['targets']:
@@ -40,7 +43,7 @@ def gatherImages():
                 imageKey = imageRecord['id']
                 imageUrl = baseApiUrl + "/sessions/{}/thumbnails/{}.jpg".format(sessionKey, imageKey)
     
-                imageData = requests.get(imageUrl)
+                imageData = task.executor(requests.get, imageUrl)
 
                 img = Image.open(BytesIO(imageData.content))
     
@@ -70,9 +73,12 @@ def buildIndex(imageList) -> None:
     html += "<button class='w3-button w3-black w3-display-right' onclick='plusDivs(1)'>&#10095;</button>"
     html += "</div><script src='js/myscripts.js'></script></body></html>"
 
-    with open(targetDir + "/index.html", "w") as index_file:
-        index_file.write(html)
-    print(f"Created index.html in {targetDir} with {len(imageList)} images")
+    targetFile = targetDir + "/index.html"
+    # must use os.open here due to pyscript restrictions on using open
+    fd = os.open(targetFile, os.O_RDWR|os.O_CREAT)
+    os.write(fd, str.encode(html))        
+    os.close(fd)
+    log.info('Created index.html in {} with {} images'.format(targetDir, len(imageList)))
 
 def initSource():
     
@@ -86,15 +92,16 @@ def initSource():
     if os.path.exists(targetDir + '/js'):
         os.rmdir(targetDir + '/js')
 
-    shutil.copytree(os.path.abspath('./source'), targetDir)
+    shutil.copytree(os.path.abspath(sourceDir), targetDir)
 
-    print(f"Initialized source support files into {targetDir}")
+    log.info('Initialized source support files into {}'.format(targetDir))
 
     return
 
-
-initSource()
-
-gatherImages()
-
-buildIndex(imgListWeb)
+@service
+def ninaimagedata(action=None, id=None):
+    log.info('Starting ninaimagedata')
+    initSource()
+    gatherImages()
+    buildIndex(imgListWeb)
+    log.info('Exiting ninaimagedata')

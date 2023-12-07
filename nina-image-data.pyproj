@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>8700e80c-493a-4054-8604-f0ee91196e85</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>nina-image-data.py</StartupFile>
+    <StartupFile>__init__.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,7 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="nina-image-data.py" />
+    <Compile Include="__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="source\" />
@@ -29,6 +29,7 @@
     <Folder Include="source\js\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="requirements.txt" />
     <Content Include="source\css\mycss.css" />
     <Content Include="source\js\myscripts.js" />
   </ItemGroup>

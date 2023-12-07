@@ -10,32 +10,31 @@ https://www.cloudynights.com/topic/902171-nina-status-dashboard-in-home-assistan
 
 ## Pre-Requisites
 
-### Home Assistant
+### Home Assistant and pyscript
 - Home Assistant running. These instructions were written for Home Assitant running in container mode, and haven't yet been validated for other modes, although it should be similar.
-- python3 installed
+- pyscript installed. See https://github.com/custom-components/pyscript for details. AppDaemon may work also, but HA's built-in python service only supports scripts that don't use imports or blocking I/O. Some recommendations if you use pyscript:
+ - Install the HACS component but don't install the UI integration. Instead of the UI integration, follow the README's suggestion to use a pyscript configuration file and add reference to that in your <config>/configuration.yaml 
+	- pyscript: !include pyscript/config.yaml
+ - In your configuration.yaml, add the following to your logger
+	- custom_components.pyscript: info
+ - Edit your <config>/pyscript/config.yaml as follows upcating nina_web_viewer_base_url for your environment.
+'''
+allow_all_imports: true
+apps:
+  nina-image-data:
+    - nina_web_viewer_base_url: http://my_nina_machine.example.com:8888
+      image_folder: /config/www/ApImages
+      source_folder: /config/pyscript/apps/nina-image-data/source
+'''
 
 ### NINA
 - Install Web Session History Viewer in your NINA instance. After restarting NINA, update the plug-in's "web plugin state" to ON and set the port to an available port on the machine running NINA.
 
 ## Installation
 
-- If it doesn't already exist, create a python_scripts folder in the root/config directory of your HA instance
-- Copy the nina.image-data.py and 'source' directory into python_scripts
-- ssh into the server running Home Assitant and navigate to the python_scripts directory
-- Execute the following to create the python env with the necessary libraries:
-```
-		python -m venv env
-		. env/bin/activate
-		pip install --upgrade pip
-		pip install Pillow
-		pip install requests
-```
-- Edit nina.image-data.py line 10 to set the baseApiUrl to the URL of your Web Session History Viewer, e.g. https://my_nina_machine.example.com:8888
-- For now, execute the script once to build your initial image capture (mext release will add steps soon regarding how to enable this script to be executed from an HA automation). Exeucte from ssh while in same directory as the python script.
-```
-		python ./nina.image-data.py
-```
- 
+- If it doesn't already exist, create a pyscript folder in the root/config directory of your HA instance. This folder may already be present, however, upon successful installation of pyscript.
+- With pyscript, create additional subfolders apps/nina-image-data
+- Copy the __init__.py and 'source' directory into pyscript/apps/nina-image-data/
 - In Home Assitant, edit a dashboard and add a new Webpage Card
 - Edit the code for the new Webpage Card and set to:
 ```
