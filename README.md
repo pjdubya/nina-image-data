@@ -13,11 +13,16 @@ https://www.cloudynights.com/topic/902171-nina-status-dashboard-in-home-assistan
 ### Home Assistant and pyscript
 - Home Assistant running. These instructions were written for Home Assitant running in container mode, and haven't yet been validated for other modes, although it should be similar.
 - pyscript installed. See https://github.com/custom-components/pyscript for details. AppDaemon may work also, but HA's built-in python service only supports scripts that don't use imports or blocking I/O. Some recommendations if you use pyscript:
- - Install the HACS component but don't install the UI integration. Instead of the UI integration, follow the README's suggestion to use a pyscript configuration file and add this reference to that in your <config>/configuration.yaml 
+  - Install the HACS component but don't install the UI integration. Instead of the UI integration, follow the README's suggestion to use a pyscript configuration file and add this reference to that in your <config>/configuration.yaml 
+
 ```pyscript: !include pyscript/config.yaml```
- - In your configuration.yaml, add the following to your logger
+
+  - In your configuration.yaml, add the following to your logger
+
 ```custom_components.pyscript: info```
- - Create <config>/pyscript/config.yaml and set it to contain follows upcating nina_web_viewer_base_url for your environment.
+
+  - Create <config>/pyscript/config.yaml and set it to contain follows upcating nina_web_viewer_base_url for your environment.
+
 ```
 allow_all_imports: true
 apps:
