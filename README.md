@@ -48,4 +48,12 @@ url: /local/ApImages/index.html
 aspect_ratio: '1'
 ```
 
+## Testing
+
+In Home Assistant, select Developer Tools, then Services. In the Service dropdown, type "ninaimagedata", then select "Call Service". If successful, there will be a <config>/www/ApImages/ directory with your NINA images and a lightweight set of HTML files to display them.
+
+## Notes and Caveats
+
+At this point it should be possible to link the service to an automation to trigger when there's a signal such as new MQTT inputs indicating a NINA session in progress and repeat until another MQTT event indicates the session has completed. (I don't yet see an option in the HA automations for this kind of while loop so will need some further exploration.)
+
 
