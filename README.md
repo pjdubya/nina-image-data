@@ -21,7 +21,7 @@ https://www.cloudynights.com/topic/902171-nina-status-dashboard-in-home-assistan
 
 ```custom_components.pyscript: info```
 
-  - Create <config>/pyscript/config.yaml and set it to contain follows upcating nina_web_viewer_base_url for your environment.
+  - Create <config>/pyscript/config.yaml and set it to contain the following, upcating nina_web_viewer_base_url for your environment.
 
 ```
 allow_all_imports: true
@@ -43,9 +43,9 @@ apps:
 - In Home Assitant, edit a dashboard and add a new Webpage Card
 - Edit the code for the new Webpage Card and set to:
 ```
-		type: iframe
-		url: /local/ApImages/index.html
-		aspect_ratio: '1'
+type: iframe
+url: /local/ApImages/index.html
+aspect_ratio: '1'
 ```
 
 
