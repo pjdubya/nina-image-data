@@ -67,29 +67,30 @@ async def gatherImages():
 
 def buildIndex(imageList) -> None:
 
-    html = "<!DOCTYPE html><html><title>AP Session Images</title>"
+    html = "<!DOCTYPE html><html><title>AP Session Images</title>\n"
 
     # disable caching since this file will be recreated frequently
-    html += "<head>"
-    html += "<meta http-equiv=\"Cache-Control\" content=\"no-cache, no-store, must-revalidate\" />"
-    html += "\<meta http-equiv=\"Pragma\" content=\"no-cache\" />"
-    html += "<meta http-equiv=\"Expires\" content=\"0\" />"
-    html += "</head>"
+    html += "<head>\n"
+    html += "<meta http-equiv=\"Cache-Control\" content=\"no-cache, no-store, must-revalidate\" />\n"
+    html += "<meta http-equiv=\"Pragma\" content=\"no-cache\" />\n"
+    html += "<meta http-equiv=\"Expires\" content=\"0\" />\n"
+    html += "</head>\n"
 
-    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-    html += "<link rel='stylesheet' href='https://www.w3schools.com/w3css/4/w3.css'>"
-    html += "<link rel='stylesheet' href='css/mycss.css'>"
-    html += "<body><div class='w3-content w3-display-container'>"
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>\n"
+    html += "<link rel='stylesheet' href='https://www.w3schools.com/w3css/4/w3.css'>\n"
+    html += "<link rel='stylesheet' href='css/mycss.css'>\n"
+    html += "<body><div class='w3-content w3-display-container'>\n"
 
-    # start with most recent image so latest image will be listed first
-    for image in sorted(imageList, key=lambda x: x['epochMilliseconds'], reverse=True):
+    for image in sorted(imageList, key=lambda x: x['epochMilliseconds']):
         time_string = datetime.datetime.fromtimestamp(image['epochMilliseconds'] / 1000).strftime("%m/%d/%Y %I:%M:%S%p")
-        html += "<span class='myDate'>" + time_string + "</span>"
-        html += f"<img class='mySlides' src='{image['filename']}' style='width:100%'>"
+        html += "\n\t<span class='time'>" + time_string + "</span>\n"
+        sequence_string = "{} / {}".format(imageList.index(image) + 1, len(imageList))
+        html += "\t<span class='sequence'>" + sequence_string + "</span>\n"
+        html += f"\t<img class='slide' src='{image['filename']}' style='width:100%'>\n"
 
-    html += "<button class='w3-button w3-black w3-display-left' onclick='plusDivs(-1)'>&#10094;</button>"
-    html += "<button class='w3-button w3-black w3-display-right' onclick='plusDivs(1)'>&#10095;</button>"
-    html += "</div><script src='js/myscripts.js'></script></body></html>"
+    html += "<button class='w3-button w3-black w3-display-left' onclick='plusDivs(-1)'>&#10094;</button>\n"
+    html += "<button class='w3-button w3-black w3-display-right' onclick='plusDivs(1)'>&#10095;</button>\n"
+    html += "</div>\n<script src='js/myscripts.js'></script></body></html>\n"
 
     targetFile = targetDir + "/index.html"
     # must use os.open here due to pyscript restrictions on using open

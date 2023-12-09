@@ -1,1 +1,23 @@
-.mySlides {display:none;}.myDate {display:none;position: relative;top:0px;left:14px;color:darkred;font-size:20px;}
+.slide {
+    display:none;
+
+}
+
+.time {
+    display:none;
+    position: relative;
+    top:0px;
+    left:14px;
+    color:darkred;
+    font-size:20px;
+
+}
+
+.sequence {
+    display: none;
+    position: absolute;
+    top: 0px;
+    right: 14px;
+    color: darkred;
+    font-size: 20px;
+}
