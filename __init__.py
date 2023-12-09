@@ -5,6 +5,9 @@ import shutil
 import requests
 from io import BytesIO
 import datetime
+import asyncio
+import logging
+import sys
 
 # when running this script from HA's pyscript with pyscript/config.yaml set with configuration for this application, these variables will be set
 if 'pyscript.app_config' in globals():
@@ -13,28 +16,35 @@ if 'pyscript.app_config' in globals():
     targetDir = pyscript.app_config[0]['image_folder']
     sourceDir = pyscript.app_config[0]['source_folder']
 else:
+    # we're also going to need our own logger if running outside of pyscript
+    log = logging.getLogger('nina-image-data--local-logger')
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
     log.info('pyscript not detected: using values provided in main app file')
     baseApiUrl = 'https://my_nina_machine.example.com:8888'
     targetDir = '../www/ApImages'
     sourceDir = './source'
-
+    
 sessionsUrl = baseApiUrl + '/sessions/sessions.json'
-
 imgListWeb = []
 
-def gatherImages():
+def requestGetAsync(url):
+    loop = asyncio.get_event_loop()
+    return loop.run_in_executor(None, requests.get, url)
+
+async def gatherImages():
     
     # TODO: may still need to add check and create www directory 
     
     if not os.path.exists(targetDir):
         os.mkdir(targetDir)
 
-    responseSessions = task.executor(requests.get, sessionsUrl)
+    responseSessions = await requestGetAsync(sessionsUrl)
     jsonResponseSessions = json.loads(responseSessions.text)
     for session in jsonResponseSessions['sessions']:
         sessionKey = jsonResponseSessions['sessions'][0]['key']
         sessionDataUrl = baseApiUrl + '/sessions/{}/sessionHistory.json'.format(sessionKey)
-        responseImages = task.executor(requests.get, sessionDataUrl)
+        responseImages = await requestGetAsync(sessionDataUrl)
         jsonResponseImages = json.loads(responseImages.text)
 
         for target in jsonResponseImages['targets']:
@@ -43,7 +53,7 @@ def gatherImages():
                 imageKey = imageRecord['id']
                 imageUrl = baseApiUrl + "/sessions/{}/thumbnails/{}.jpg".format(sessionKey, imageKey)
     
-                imageData = task.executor(requests.get, imageUrl)
+                imageData = await requestGetAsync(imageUrl)
 
                 img = Image.open(BytesIO(imageData.content))
     
@@ -106,10 +116,20 @@ def initSource():
 
     return
 
-@service
-def ninaimagedata(action=None, id=None):
-    log.info('Starting ninaimagedata')
+async def ninaimagedataasync():
+    loop = asyncio.get_running_loop()
+    log.info('Starting ninaimagedata')    
     initSource()
-    gatherImages()
+    await gatherImages()
     buildIndex(imgListWeb)
     log.info('Exiting ninaimagedata')
+
+#comment out the @service line when running locally outside of pyscript
+@service
+def ninaimagedata():
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(ninaimagedataasync())
+    except Exception as e: log.info(e)
+
+ninaimagedata()
