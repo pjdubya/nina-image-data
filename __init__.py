@@ -26,7 +26,7 @@ else:
     sourceDir = './source'
     
 sessionsUrl = baseApiUrl + '/sessions/sessions.json'
-imgListWeb = []
+imageList = []
 
 def requestGetAsync(url):
     loop = asyncio.get_event_loop()
@@ -55,17 +55,17 @@ async def gatherImages():
     
                 imageData = await requestGetAsync(imageUrl)
 
-                img = Image.open(BytesIO(imageData.content))
+                image = Image.open(BytesIO(imageData.content))
     
                 filename = '{}-{}.jpg'.format(targetName, imageKey)
-                img.save('{}/{}'.format(targetDir, filename))
-                # fromtimestamp takes seconds so need to convert ms to sec
+                image.save('{}/{}'.format(targetDir, filename))
                 imageListItem = { 'filename': '{}'.format(filename), 'epochMilliseconds': imageRecord['epochMilliseconds'] }              
-                imgListWeb.append(imageListItem)
+                imageList.append(imageListItem)
+                log.debug('appended filename {} epocmilliseconds {} for target {} session {} arraysize {}'. format(filename, imageRecord['epochMilliseconds'], targetName, sessionKey, len(imageList)))
 
     return
 
-def buildIndex(imageList) -> None:
+def buildIndex():
 
     html = "<!DOCTYPE html><html><title>AP Session Images</title>\n"
 
@@ -119,10 +119,11 @@ def initSource():
 
 async def ninaimagedataasync():
     loop = asyncio.get_running_loop()
-    log.info('Starting ninaimagedata')    
+    log.info('Starting ninaimagedata')
+    imageList.clear()
     initSource()
     await gatherImages()
-    buildIndex(imgListWeb)
+    buildIndex()
     log.info('Exiting ninaimagedata')
 
 #comment out the @service line when running locally outside of pyscript
