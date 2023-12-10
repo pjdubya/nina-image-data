@@ -8,6 +8,9 @@ import datetime
 import asyncio
 import logging
 import sys
+import glob
+
+loggerName = 'nina-image-data--local-logger'
 
 # when running this script from HA's pyscript with pyscript/config.yaml set with configuration for this application, these variables will be set
 if 'pyscript.app_config' in globals():
@@ -17,25 +20,26 @@ if 'pyscript.app_config' in globals():
     sourceDir = pyscript.app_config[0]['source_folder']
 else:
     # we're also going to need our own logger if running outside of pyscript
-    log = logging.getLogger('nina-image-data--local-logger')
+    log = logging.getLogger(loggerName)
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
     log.info('pyscript not detected: using values provided in main app file')
-    baseApiUrl = 'https://my_nina_machine.example.com:8888'
+    baseApiUrl = 'http://my_nina_machine.example.com:8888'
     targetDir = '../www/ApImages'
     sourceDir = './source'
     
 sessionsUrl = baseApiUrl + '/sessions/sessions.json'
 imageList = []
+targetFiles = []
 
 def requestGetAsync(url):
     loop = asyncio.get_event_loop()
     return loop.run_in_executor(None, requests.get, url)
 
 async def gatherImages():
-    
+    global targetFiles
+    log = logging.getLogger(loggerName)
     # TODO: may still need to add check and create www directory 
-    
     if not os.path.exists(targetDir):
         os.mkdir(targetDir)
 
@@ -51,17 +55,28 @@ async def gatherImages():
             targetName = target['name']
             for imageRecord in target['imageRecords']:
                 imageKey = imageRecord['id']
-                imageUrl = baseApiUrl + "/sessions/{}/thumbnails/{}.jpg".format(sessionKey, imageKey)
-    
-                imageData = await requestGetAsync(imageUrl)
+                
+                # only download the file again if we don't already have it
+                filename = '{}-{}.jpg'.format(targetName, imageKey) 
+                if (not filename in targetFiles):
+                    imageUrl = baseApiUrl + "/sessions/{}/thumbnails/{}.jpg".format(sessionKey, imageKey)    
+                    imageData = await requestGetAsync(imageUrl)
+                    image = Image.open(BytesIO(imageData.content))    
+                    image.save('{}/{}'.format(targetDir, filename))
+                    log.debug("downloaded {}".format(imageKey))
+                else:
+                    log.debug("already downloaded {}, skipping".format(imageKey))
 
-                image = Image.open(BytesIO(imageData.content))
-    
-                filename = '{}-{}.jpg'.format(targetName, imageKey)
-                image.save('{}/{}'.format(targetDir, filename))
+                targetFiles[filename] = 'validated'
                 imageListItem = { 'filename': '{}'.format(filename), 'epochMilliseconds': imageRecord['epochMilliseconds'] }              
                 imageList.append(imageListItem)
                 log.debug('appended filename {} epocmilliseconds {} for target {} session {} arraysize {}'. format(filename, imageRecord['epochMilliseconds'], targetName, sessionKey, len(imageList)))
+  
+        # purge any (jpg) files found on target directory that were not validated to be part of the still-current NINA image set
+        filesToDelete = [(filename, status) for filename, status in targetFiles.items() if status == "unvalidated"]
+        for filename, status in filesToDelete:
+            log.info("Deleting prior jpg file {} as no longer part of current NINA data set".format(filename))
+            os.remove('{}/{}'.format(targetDir, filename))
 
     return
 
@@ -99,29 +114,21 @@ def buildIndex():
     os.close(fd)
     log.info('Created index.html in {} with {} images'.format(targetDir, len(imageList)))
 
-def initSource():
-    
-    # copytree requires the destination be non-existent. we'll be rebuilding the rest of the directory using other functions anyway.
-    if os.path.exists(targetDir):
-        shutil.rmtree(targetDir)
-
-    if os.path.exists(targetDir + '/css'):
-        os.rmdir(targetDir + '/css')
-
-    if os.path.exists(targetDir + '/js'):
-        os.rmdir(targetDir + '/js')
-
-    shutil.copytree(os.path.abspath(sourceDir), targetDir)
-
+def initTarget():
+    shutil.copytree(os.path.abspath(sourceDir), targetDir, dirs_exist_ok=True)
     log.info('Initialized source support files into {}'.format(targetDir))
-
+    
+    # get list of files ending in jpg, ie the previously stored image files, since we dont need to download those again
+    global targetFiles
+    targetFiles = { f: 'unvalidated' for f in glob.glob('*.jpg', root_dir=targetDir) }
+    
     return
 
 async def ninaimagedataasync():
     loop = asyncio.get_running_loop()
     log.info('Starting ninaimagedata')
     imageList.clear()
-    initSource()
+    initTarget()
     await gatherImages()
     buildIndex()
     log.info('Exiting ninaimagedata')
