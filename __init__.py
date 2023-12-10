@@ -31,57 +31,70 @@ else:
 sessionsUrl = baseApiUrl + '/sessions/sessions.json'
 imageList = []
 targetFiles = []
+gatherStatus = "unknown"
 
 def requestGetAsync(url):
     loop = asyncio.get_event_loop()
     return loop.run_in_executor(None, requests.get, url)
 
 async def gatherImages():
-    global targetFiles
+    global targetFiles, gatherStatus
     log = logging.getLogger(loggerName)
     # TODO: may still need to add check and create www directory 
     if not os.path.exists(targetDir):
         os.mkdir(targetDir)
 
-    responseSessions = await requestGetAsync(sessionsUrl)
-    jsonResponseSessions = json.loads(responseSessions.text)
-    for session in jsonResponseSessions['sessions']:
-        sessionKey = jsonResponseSessions['sessions'][0]['key']
-        sessionDataUrl = baseApiUrl + '/sessions/{}/sessionHistory.json'.format(sessionKey)
-        responseImages = await requestGetAsync(sessionDataUrl)
-        jsonResponseImages = json.loads(responseImages.text)
+    try:
+        responseSessions = await requestGetAsync(sessionsUrl)
+        jsonResponseSessions = json.loads(responseSessions.text)
+        for session in jsonResponseSessions['sessions']:
+            sessionKey = jsonResponseSessions['sessions'][0]['key']
+            sessionDataUrl = baseApiUrl + '/sessions/{}/sessionHistory.json'.format(sessionKey)
+            responseImages = await requestGetAsync(sessionDataUrl)
+            jsonResponseImages = json.loads(responseImages.text)
 
-        for target in jsonResponseImages['targets']:
-            targetName = target['name']
-            for imageRecord in target['imageRecords']:
-                imageKey = imageRecord['id']
+            for target in jsonResponseImages['targets']:
+                targetName = target['name']
+                for imageRecord in target['imageRecords']:
+                    imageKey = imageRecord['id']
                 
-                # only download the file again if we don't already have it
-                filename = '{}-{}.jpg'.format(targetName, imageKey) 
-                if (not filename in targetFiles):
-                    imageUrl = baseApiUrl + "/sessions/{}/thumbnails/{}.jpg".format(sessionKey, imageKey)    
-                    imageData = await requestGetAsync(imageUrl)
-                    image = Image.open(BytesIO(imageData.content))    
-                    image.save('{}/{}'.format(targetDir, filename))
-                    log.debug("downloaded {}".format(imageKey))
-                else:
-                    log.debug("already downloaded {}, skipping".format(imageKey))
+                    # only download the file again if we don't already have it
+                    filename = '{}-{}.jpg'.format(targetName, imageKey) 
+                    if (not filename in targetFiles):
+                        imageUrl = baseApiUrl + "/sessions/{}/thumbnails/{}.jpg".format(sessionKey, imageKey)    
+                        imageData = await requestGetAsync(imageUrl)
+                        image = Image.open(BytesIO(imageData.content))    
+                        image.save('{}/{}'.format(targetDir, filename))
+                        log.debug("downloaded {}".format(imageKey))
+                    else:
+                        log.debug("already downloaded {}, skipping".format(imageKey))
 
-                targetFiles[filename] = 'validated'
-                imageListItem = { 'filename': '{}'.format(filename), 'epochMilliseconds': imageRecord['epochMilliseconds'] }              
-                imageList.append(imageListItem)
-                log.debug('appended filename {} epocmilliseconds {} for target {} session {} arraysize {}'. format(filename, imageRecord['epochMilliseconds'], targetName, sessionKey, len(imageList)))
-  
-        # purge any (jpg) files found on target directory that were not validated to be part of the still-current NINA image set
-        filesToDelete = [(filename, status) for filename, status in targetFiles.items() if status == "unvalidated"]
-        for filename, status in filesToDelete:
-            log.info("Deleting prior jpg file {} as no longer part of current NINA data set".format(filename))
-            os.remove('{}/{}'.format(targetDir, filename))
+                    targetFiles[filename] = 'validated'
+                    imageListItem = { 'filename': '{}'.format(filename), 'epochMilliseconds': imageRecord['epochMilliseconds'] }              
+                    imageList.append(imageListItem)
+                    log.debug('appended filename {} epocmilliseconds {} for target {} session {} arraysize {}'. format(filename, imageRecord['epochMilliseconds'], targetName, sessionKey, len(imageList)))
+                    
+            # purge any (jpg) files found on target directory that were not validated to be part of the still-current NINA image set
+            filesToDelete = [(filename, status) for filename, status in targetFiles.items() if status == "unvalidated"]
+            for filename, status in filesToDelete:
+                log.info("Deleting prior jpg file {} as no longer part of current NINA data set".format(filename))
+                os.remove('{}/{}'.format(targetDir, filename))
+                
+        if (len(imageList) > 0):
+            gatherStatus = "success"
+        else:
+            gatherStatus = "noImages"               
+
+    except ConnectionError:
+        gatherStatus = "connectionError"
+    except Exception as error:
+        gatherStatus = "genericError: {}".format(error)
+    except:
+        gatherStatus = "otherError"
 
     return
 
 def buildIndex():
-
     html = "<!DOCTYPE html><html><title>AP Session Images</title>\n"
 
     # disable caching since this file will be recreated frequently
@@ -96,25 +109,40 @@ def buildIndex():
     html += "<link rel='stylesheet' href='css/mycss.css'>\n"
     html += "<body><div class='w3-content w3-display-container'>\n"
 
-    for image in sorted(imageList, key=lambda x: x['epochMilliseconds']):
-        time_string = datetime.datetime.fromtimestamp(image['epochMilliseconds'] / 1000).strftime("%m/%d/%Y %I:%M:%S%p")
-        html += "\n\t<span class='time'>" + time_string + "</span>\n"
-        sequence_string = "{} / {}".format(imageList.index(image) + 1, len(imageList))
-        html += "\t<span class='sequence'>" + sequence_string + "</span>\n"
-        html += f"\t<img class='slide' src='{image['filename']}' style='width:100%'>\n"
+    if (gatherStatus == "success"):
+        for image in sorted(imageList, key=lambda x: x['epochMilliseconds']):
+            time_string = datetime.datetime.fromtimestamp(image['epochMilliseconds'] / 1000).strftime("%m/%d/%Y %I:%M:%S%p")
+            html += "\n\t<span class='time'>" + time_string + "</span>\n"
+            sequence_string = "{} / {}".format(imageList.index(image) + 1, len(imageList))
+            html += "\t<span class='sequence'>" + sequence_string + "</span>\n"
+            html += f"\t<img class='slide' src='{image['filename']}' style='width:100%'>\n"
 
-    html += "<button class='w3-button w3-black w3-display-left' onclick='plusDivs(-1)'>&#10094;</button>\n"
-    html += "<button class='w3-button w3-black w3-display-right' onclick='plusDivs(1)'>&#10095;</button>\n"
-    html += "</div>\n<script src='js/myscripts.js'></script></body></html>\n"
+        html += "<button class='w3-button w3-black w3-display-left' onclick='plusDivs(-1)'>&#10094;</button>\n"
+        html += "<button class='w3-button w3-black w3-display-right' onclick='plusDivs(1)'>&#10095;</button>\n"
+        html += "</div>\n<script src='js/myscripts.js'></script></body></html>\n"
+    elif gatherStatus == "noImages":
+        html += "</h2>No images yet available to download from NINA.</h2>"
+        html += "</div></html>"
+    elif gatherStatus == "connectionError":
+        html += "</h2>Unable to establish connection to NINA.</h2>"
+        html += "</div></html>"
+    elif "genericError" in gatherStatus:
+        html += "</h2>Error in establishing connection to NINA: {}.</h2>".format(gatherStatus)
+        html += "</div></html>"
+    elif gatherStatus == "otherError":
+        html += "</h2>An unexpected error has occured. See logs for details.</h2>"
+        html += "</div></html>"
 
     targetFile = targetDir + "/index.html"
-    # must use os.open here due to pyscript restrictions on using open
+    # must use os.open here due to pyscript restrictions on using open; delete old file and create new to ensure it's clean
+    os.remove(targetFile)
     fd = os.open(targetFile, os.O_RDWR|os.O_CREAT)
     os.write(fd, str.encode(html))        
     os.close(fd)
     log.info('Created index.html in {} with {} images'.format(targetDir, len(imageList)))
 
 def initTarget():
+    log = logging.getLogger(loggerName)
     shutil.copytree(os.path.abspath(sourceDir), targetDir, dirs_exist_ok=True)
     log.info('Initialized source support files into {}'.format(targetDir))
     
