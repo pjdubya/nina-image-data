@@ -42,6 +42,7 @@ NOTE: In this version, the image_folder location will be deleted and recreated e
 - If it doesn't already exist, create a pyscript folder in the root/config directory of your HA instance. This folder may already be present, however, upon successful installation of pyscript.
 - With pyscript, create additional subfolders apps/nina-image-data
 - Copy the __init__.py and 'source' directory into pyscript/apps/nina-image-data/
+- Copy the requirements.txt into pyscript/
 - In Home Assitant, edit a dashboard and add a new Webpage Card
 - Edit the code for the new Webpage Card and set to:
 ```
